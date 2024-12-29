@@ -1,0 +1,154 @@
+
+{% extends 'google/base.html' %}
+{% block content %}
+{% load static %}
+
+<script>
+var tmp = 0;
+function getdata(map, dict, rect){
+        $.ajax({
+            url: "{% url 'mqtt_check'%}",
+            method: 'GET',
+            success: function (data) {
+                const loc = {lat: parseFloat(data['lat']), lng: parseFloat(data['lng'])};
+                var poin = new google.maps.LatLng(parseFloat(loc.lat), parseFloat(loc.lng))
+                var add = addMarker(loc, map);
+                for (var count = 0; count < rect.length; count++) {
+                    if (rect[count].bounding.contains(poin)) {
+                        console.log("TEMP 1"+tmp);
+                        console.log("BOX" + rect[count].bounding);
+                        if(tmp !== rect[count].bounding)
+                        {
+                                console.log("NOT");
+                                tmp = rect[count].bounding;
+                                console.log("TEMP 2"+tmp);
+                                rect[count].color_value = rect[count].color_value + 1;
+                                var area1 = new google.maps.Rectangle({
+                                        strokeWeight: 0,
+                                        fillColor: dict[rect[count].color_value],
+                                        fillOpacity: 1,
+                                        map: map,
+                                        bounds: rect[count].bounding,
+                                                    });
+
+                        }
+
+                    }
+                }
+
+            }
+        });
+}
+
+function initMap() {
+    console.log("initMap");
+    var rect = [];
+    //rect.push({bounding: "000", color_value: 0});
+    var center = new google.maps.LatLng(13.206656420173362, 77.72261645932849);
+    const map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 30,
+        center: center,
+    });
+    var dict = new Object();
+    dict =
+        {
+            1: "#FF0000", //red
+            2: "#11EB11", //green
+            3: "#0000ff", //blue
+
+        }
+
+    google.maps.event.addListenerOnce(map, 'idle', function () {
+        drawRectangle(map);
+    });
+
+    function drawRectangle(map) {
+        var val = 0;
+        console.log("drawRectangle");
+        var southWest = {lat: 13.206659503070524, lng: 77.72262735549542}
+        var northEast = {lat: 13.207044250815065, lng: 77.72294660126329}
+        //var tileHeight = (northEast.lat - southWest.lat) / numberOfParts;
+        var tileWidth =  0.0000026000
+        var tileHeight = 0.0000026000
+        var numberOfParts1 = (northEast.lng - southWest.lng) / tileWidth;
+        var numberOfParts2 = (northEast.lat - southWest.lat) / tileWidth;
+        console.log("NOP1", numberOfParts1);
+        console.log("NOP2", numberOfParts2);
+        console.log("Here is it",tileHeight, tileWidth);
+        for (var x = 0; x < numberOfParts1; x++) {
+            for (var y = 0; y < numberOfParts2; y++) {
+                val = val + 1;
+                var areaBounds = {
+                    north: southWest.lat + (tileHeight * (y + 1)),
+                    south: southWest.lat + (tileHeight * y),
+                    east: southWest.lng + (tileWidth * (x + 1)),
+                    west: southWest.lng + (tileWidth * x)
+                };
+                console.log("Rectangle");
+                var area = new google.maps.Rectangle({
+                    strokeColor: '#000000',
+                    strokeOpacity: 0.9,
+                    strokeWeight: 0.2,
+                    //fillColor: '#FF0000',
+                    //fillOpacity: 0.35,
+                    map: map,
+                    bounds: areaBounds
+                });
+
+                rect.push({bounding: area.getBounds(), color_value: 0});
+            }
+        }
+        console.log("Val", val);
+
+        }
+
+
+    const int = setInterval(getdata,2000, map, dict,rect);
+
+}
+function addMarker(loc, map)
+{
+    //console.log("RECT1"+rect[2].bounding);
+    //console.log("RECT0"+rect[1].bounding);
+    console.log("addMarker");
+    //console.log(points.toString());
+    const svgMarker = {
+            path: "M-1.547 12l6.563-6.609-1.406-1.406-5.156 5.203-2.063-2.109-1.406 1.406zM0 0q2.906 0 4.945 2.039t2.039 4.945q0 1.453-0.727 3.328t-1.758 3.516-2.039 3.070-1.711 2.273l-0.75 0.797q-0.281-0.328-0.75-0.867t-1.688-2.156-2.133-3.141-1.664-3.445-0.75-3.375q0-2.906 2.039-4.945t4.945-2.039z",
+            fillColor: "blue",
+            fillOpacity: 0.6,
+            strokeWeight: 0.5,
+            rotation: 0,
+            scale: 2,
+            anchor: new google.maps.Point(0, 20),
+                    };
+
+  new google.maps.Marker({
+    position: loc,
+    icon: svgMarker,
+      map:map,
+  });
+}
+</script>
+
+
+<div class="pageholder">
+    <div class="titleholder"> 
+        <div class="title"><i class="fas fa-compass mr-2"></i> Maps Play Area</div>
+        <a href="{% url 'home'%}" class="title2 mr-4"><i class="fas fa-home mr-2"></i> Back to home </a>
+    </div>
+
+    <div class="linkholder">
+        <div class="mapholder">
+            <div id="map"></div>
+            <script
+{#                    &key={{ key }} &callback=initMap#}
+            src="https://maps.googleapis.com/maps/api/js?&key={{ key }}&libraries=geometry,visualization&v=weekly&callback=initMap"
+            defer
+            ></script>
+        </div>
+    </div>
+</div>
+
+
+
+{% endblock content %}
